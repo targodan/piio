@@ -39,6 +39,10 @@ type CompressedChunk struct {
 // amount of digits requested.
 // Both the first index and the size have to be positive and
 // even. The given file has to be seekable.
+//
+// The expected file format is as follows.
+// Binary digits, each digit 4 bits wide with the lower index
+// digit in the higher nibble of each byte.
 func ReadCompressedChunkFile(file *os.File, firstIndex int64, size int) (*CompressedChunk, error) {
 	if firstIndex < 0 || firstIndex%2 != 0 {
 		return nil, errors.New("only positive even first indexes are supported")
@@ -113,15 +117,15 @@ func (c *CompressedChunk) Digit(index int64) (byte, error) {
 	return digit, nil
 }
 
-// DecompressedChunk represents a non-compressed chunk
+// UncompressedChunk represents a non-compressed chunk
 // of digits of pi.
-type DecompressedChunk struct {
+type UncompressedChunk struct {
 	FirstDigitIndex int64  `json:"firstDigitIndex"`
 	Digits          []byte `json:"digits"`
 }
 
-// Uncompress uncompresses a compressed chunk.
-func Uncompress(chnk Chunk) Chunk {
+// Decompress decompresses a compressed chunk.
+func Decompress(chnk Chunk) Chunk {
 	if !chnk.IsCompressed() {
 		return chnk
 	}
@@ -131,7 +135,7 @@ func Uncompress(chnk Chunk) Chunk {
 		panic("can only uncompress CompressedChunks")
 	}
 
-	chunk := &DecompressedChunk{
+	chunk := &UncompressedChunk{
 		FirstDigitIndex: c.firstIndex,
 		Digits:          make([]byte, len(c.data)*2),
 	}
@@ -143,31 +147,31 @@ func Uncompress(chnk Chunk) Chunk {
 }
 
 // IsCompressed returns false.
-func (c *DecompressedChunk) IsCompressed() bool {
+func (c *UncompressedChunk) IsCompressed() bool {
 	return false
 }
 
 // FirstIndex returns the index of the first digit of
 // pi contained in this chunk.
-func (c *DecompressedChunk) FirstIndex() int64 {
+func (c *UncompressedChunk) FirstIndex() int64 {
 	return c.FirstDigitIndex
 }
 
 // Length returns the amount of digits contained in
 // this chunk.
-func (c *DecompressedChunk) Length() int {
+func (c *UncompressedChunk) Length() int {
 	return len(c.Digits)
 }
 
 // LastIndex returns the index of the last digit of pi
 // contained in this chunk.
-func (c *DecompressedChunk) LastIndex() int64 {
+func (c *UncompressedChunk) LastIndex() int64 {
 	return c.FirstDigitIndex + int64(c.Length()) - 1
 }
 
 // Digit returns the index-th digit of pi. It errors if
 // the requested digit is not contained in this chunk.
-func (c *DecompressedChunk) Digit(index int64) (byte, error) {
+func (c *UncompressedChunk) Digit(index int64) (byte, error) {
 	ind := int(index - c.FirstDigitIndex)
 	if ind >= len(c.Digits) {
 		return 255, errors.New("index out of range")
