@@ -51,10 +51,10 @@ func (cs *uncachedChunkSource) GetChunk(firstIndex int64, size int) (Chunk, erro
 
 	switch cs.fileFormat {
 	case FileFormatCompressed:
-		return ReadCompressedChunkFile(file, firstIndex, size)
+		return ReadCompressedChunk(file, firstIndex, size)
 
 	case FileFormatText:
-		return ReadChunkFromTextfile(file, firstIndex, size)
+		return ReadTextChunk(file, firstIndex, size)
 	}
 
 	return nil, errors.New("unknown file format")

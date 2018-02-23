@@ -34,7 +34,7 @@ type CompressedChunk struct {
 	data       []byte
 }
 
-// ReadCompressedChunkFile reads a certain chunk defined by
+// ReadCompressedChunk reads a certain chunk defined by
 // the index of the first requested digit of pi and the
 // amount of digits requested.
 // Both the first index and the size have to be positive and
@@ -43,7 +43,7 @@ type CompressedChunk struct {
 // The expected file format is as follows.
 // Binary digits, each digit 4 bits wide with the lower index
 // digit in the higher nibble of each byte.
-func ReadCompressedChunkFile(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
+func ReadCompressedChunk(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
 	if firstIndex < 0 || firstIndex%2 != 0 {
 		return nil, errors.New("only positive even first indexes are supported")
 	}
@@ -88,7 +88,7 @@ func Compress(chnk Chunk) Chunk {
 	}
 	for i := 0; i < len(chunk.data); i++ {
 		chunk.data[i] = c.Digits[i*2] << 4
-		chunk.data[i] = c.Digits[i*2+1]
+		chunk.data[i] |= c.Digits[i*2+1]
 	}
 	return chunk
 }
@@ -125,10 +125,10 @@ func (c *CompressedChunk) LastIndex() int64 {
 // Digit returns the index-th digit of pi. It errors if
 // the requested digit is not contained in this chunk.
 func (c *CompressedChunk) Digit(index int64) (byte, error) {
-	ind, isHighNibble := c.digitIndexToDataIndex(index)
-	if ind >= len(c.data) {
+	if index < c.firstIndex || int((index-c.firstIndex)/2) >= len(c.data) {
 		return 255, errors.New("index out of range")
 	}
+	ind, isHighNibble := c.digitIndexToDataIndex(index)
 
 	digit := c.data[ind]
 	if isHighNibble {
@@ -146,15 +146,15 @@ type UncompressedChunk struct {
 	Digits          []byte `json:"digits"`
 }
 
-// ReadChunkFromTextfile reads a certain chunk defined by
+// ReadTextChunk reads a certain chunk defined by
 // the index of the first requested digit of pi and the
-// amount of digits requested from a text file.
+// amount of digits requested from a text based input.
 // Both the first index and the size have to be positive and
 // even. The given file has to be seekable.
 //
 // The expected file format is one character for each digit
 // no decimal point. So the file should start with `314`...
-func ReadChunkFromTextfile(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
+func ReadTextChunk(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
 	if firstIndex < 0 || firstIndex%2 != 0 {
 		return nil, errors.New("only positive even first indexes are supported")
 	}
@@ -236,7 +236,7 @@ func (c *UncompressedChunk) LastIndex() int64 {
 // the requested digit is not contained in this chunk.
 func (c *UncompressedChunk) Digit(index int64) (byte, error) {
 	ind := int(index - c.FirstDigitIndex)
-	if ind >= len(c.Digits) {
+	if index < c.FirstDigitIndex || ind >= len(c.Digits) {
 		return 255, errors.New("index out of range")
 	}
 	return c.Digits[ind], nil
