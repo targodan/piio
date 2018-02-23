@@ -1,8 +1,19 @@
 package piio
 
 import (
+	"errors"
 	"fmt"
 	"os"
+)
+
+// FileFormat represents the supported file formats.
+type FileFormat int
+
+const (
+	// FileFormatCompressed represents a compressed binary format. See ReadCompressedChunkFile.
+	FileFormatCompressed = iota
+	// FileFormatText represents a text format. See ReadChunkFromTextfile.
+	FileFormatText
 )
 
 // ChunkSource represents a source of chunks.
@@ -13,15 +24,17 @@ type ChunkSource interface {
 }
 
 type uncachedChunkSource struct {
-	filename string
-	maxSize  int
+	filename   string
+	fileFormat FileFormat
+	maxSize    int
 }
 
 // NewUncachedChunkSource creates a new uncached ChunkSource.
-func NewUncachedChunkSource(filename string, maxSize int) ChunkSource {
+func NewUncachedChunkSource(filename string, fileFormat FileFormat, maxSize int) ChunkSource {
 	return &uncachedChunkSource{
-		filename: filename,
-		maxSize:  maxSize,
+		filename:   filename,
+		fileFormat: fileFormat,
+		maxSize:    maxSize,
 	}
 }
 
@@ -36,5 +49,13 @@ func (cs *uncachedChunkSource) GetChunk(firstIndex int64, size int) (Chunk, erro
 	}
 	defer file.Close()
 
-	return ReadCompressedChunkFile(file, firstIndex, size)
+	switch cs.fileFormat {
+	case FileFormatCompressed:
+		return ReadCompressedChunkFile(file, firstIndex, size)
+
+	case FileFormatText:
+		return ReadChunkFromTextfile(file, firstIndex, size)
+	}
+
+	return nil, errors.New("unknown file format")
 }
