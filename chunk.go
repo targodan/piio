@@ -2,7 +2,7 @@ package piio
 
 import (
 	"errors"
-	"os"
+	"io"
 )
 
 // Chunk represents a chunk of digits of pi.
@@ -43,14 +43,14 @@ type CompressedChunk struct {
 // The expected file format is as follows.
 // Binary digits, each digit 4 bits wide with the lower index
 // digit in the higher nibble of each byte.
-func ReadCompressedChunkFile(file *os.File, firstIndex int64, size int) (*CompressedChunk, error) {
+func ReadCompressedChunkFile(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
 	if firstIndex < 0 || firstIndex%2 != 0 {
 		return nil, errors.New("only positive even first indexes are supported")
 	}
 	if size <= 0 || size%2 != 0 {
 		return nil, errors.New("only positive even sizes are supported")
 	}
-	_, err := file.Seek(firstIndex/2, 0)
+	_, err := input.Seek(firstIndex/2, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func ReadCompressedChunkFile(file *os.File, firstIndex int64, size int) (*Compre
 		data:       make([]byte, size/2),
 	}
 
-	size, err = file.Read(chunk.data)
+	size, err = input.Read(chunk.data)
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +69,28 @@ func ReadCompressedChunkFile(file *os.File, firstIndex int64, size int) (*Compre
 	chunk.data = chunk.data[:size]
 
 	return chunk, nil
+}
+
+// Compress compresses an uncompressed chunk.
+func Compress(chnk Chunk) Chunk {
+	if chnk.IsCompressed() {
+		return chnk
+	}
+
+	c, ok := chnk.(*UncompressedChunk)
+	if !ok {
+		panic("can only uncompress CompressedChunks")
+	}
+
+	chunk := &CompressedChunk{
+		firstIndex: c.FirstIndex(),
+		data:       make([]byte, len(c.Digits)/2),
+	}
+	for i := 0; i < len(chunk.data); i++ {
+		chunk.data[i] = c.Digits[i*2] << 4
+		chunk.data[i] = c.Digits[i*2+1]
+	}
+	return chunk
 }
 
 // IsCompressed returns true.
@@ -122,6 +144,47 @@ func (c *CompressedChunk) Digit(index int64) (byte, error) {
 type UncompressedChunk struct {
 	FirstDigitIndex int64  `json:"firstDigitIndex"`
 	Digits          []byte `json:"digits"`
+}
+
+// ReadChunkFromTextfile reads a certain chunk defined by
+// the index of the first requested digit of pi and the
+// amount of digits requested from a text file.
+// Both the first index and the size have to be positive and
+// even. The given file has to be seekable.
+//
+// The expected file format is one character for each digit
+// no decimal point. So the file should start with `314`...
+func ReadChunkFromTextfile(input io.ReadSeeker, firstIndex int64, size int) (Chunk, error) {
+	if firstIndex < 0 || firstIndex%2 != 0 {
+		return nil, errors.New("only positive even first indexes are supported")
+	}
+	if size <= 0 || size%2 != 0 {
+		return nil, errors.New("only positive even sizes are supported")
+	}
+	_, err := input.Seek(firstIndex, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	chunk := &UncompressedChunk{
+		FirstDigitIndex: firstIndex,
+		Digits:          make([]byte, size),
+	}
+
+	size, err = input.Read(chunk.Digits)
+	if err != nil {
+		return nil, err
+	}
+
+	// Trim in case we requested more than the file can give us.
+	chunk.Digits = chunk.Digits[:size]
+
+	// Convert from character to number
+	for i := range chunk.Digits {
+		chunk.Digits[i] = chunk.Digits[i] - byte('0')
+	}
+
+	return chunk, nil
 }
 
 // Decompress decompresses a compressed chunk.
