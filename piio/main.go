@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/targodan/piio"
+	"github.com/targodan/piio/rest"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -35,16 +39,29 @@ func main() {
 			Usage: "listen and serve",
 			Flags: []cli.Flag{
 				cli.StringFlag{
+					Name:  "pi,p",
+					Usage: "The file of pi.",
+					Value: "pi.bin",
+				},
+				cli.StringFlag{
 					Name:  "addr,a",
 					Usage: "The address and port to listen on.",
 					Value: "127.0.0.1:8080",
+				},
+				cli.IntFlag{
+					Name:  "max-chunk-size,c",
+					Usage: "The maximum size of a chunk to be served.",
+					Value: defaultChunkSize,
 				},
 			},
 			Action: serveAction,
 		},
 	}
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
 }
 
 func compressAction(c *cli.Context) error {
@@ -99,5 +116,18 @@ func compressAction(c *cli.Context) error {
 }
 
 func serveAction(c *cli.Context) error {
-	return nil
+	chunkSource := piio.NewUncachedChunkSource(c.String("pi"), piio.FileFormatCompressed, c.Int("max-chunk-size"))
+	api := rest.NewAPI(chunkSource)
+
+	server := &http.Server{
+		Addr:           c.String("addr"),
+		MaxHeaderBytes: 512,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   5 * time.Second,
+		Handler:        api.Handler(),
+	}
+
+	err := server.ListenAndServe()
+
+	return err
 }

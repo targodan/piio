@@ -22,24 +22,26 @@ func writeJson(w http.ResponseWriter, data interface{}) {
 }
 
 func NewAPI(chunkSource piio.ChunkSource) *API {
-	versionRouter := httprouter.New()
+	router := httprouter.New()
 	api := &API{
-		router:      versionRouter,
+		router:      router,
 		chunkSource: chunkSource,
 	}
 
-	v1Router := httprouter.New()
-
-	v1Router.GET("/digit/:index", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	router.GET("/v1/digit/:index", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		index, err := strconv.ParseInt(p.ByName("index"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJson(w, &DigitResponse{Error: "the index must be a number, got " + p.ByName("index")})
+			errMsg := "the index must be a number, got " + p.ByName("index")
+			writeJson(w, &DigitResponse{Error: &errMsg})
+			return
 		}
 		d, err := api.GetDigit(index)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJson(w, &DigitResponse{Error: err.Error()})
+			errMsg := err.Error()
+			writeJson(w, &DigitResponse{Error: &errMsg})
+			return
 		}
 		writeJson(w, &DigitResponse{
 			Index: index,
@@ -47,36 +49,48 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 		})
 	})
 
-	v1Router.GET("/chunk/:startIndex/:size", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	router.GET("/v1/chunk/:startIndex/:size", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		index, err := strconv.ParseInt(p.ByName("startIndex"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJson(w, &ChunkResponse{Error: "the start index must be a number, got " + p.ByName("startIndex")})
+			errMsg := "the start index must be a number, got " + p.ByName("startIndex")
+			writeJson(w, &ChunkResponse{Error: &errMsg})
+			return
 		}
 		size, err := strconv.ParseInt(p.ByName("size"), 10, 32)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJson(w, &ChunkResponse{Error: "the size must be a number, got " + p.ByName("size")})
+			errMsg := "the size must be a number, got " + p.ByName("size")
+			writeJson(w, &ChunkResponse{Error: &errMsg})
+			return
 		}
 		chnk, err := api.GetChunk(index, int(size))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			writeJson(w, &ChunkResponse{Error: err.Error()})
+			errMsg := err.Error()
+			writeJson(w, &ChunkResponse{Error: &errMsg})
+			return
 		}
 		unChnk := piio.AsUncompressedChunk(chnk)
+		digits := make([]int, len(unChnk.Digits))
+		for i, d := range unChnk.Digits {
+			digits[i] = int(d)
+		}
 		writeJson(w, &ChunkResponse{
 			FirstIndex: unChnk.FirstIndex(),
-			Digits:     unChnk.Digits,
+			Digits:     digits,
 		})
 	})
-
-	versionRouter.Handler("GET", "/v1", v1Router)
 
 	return api
 }
 
 func (api *API) GetDigit(index int64) (byte, error) {
-	chnk, err := api.chunkSource.GetChunk(index, 1)
+	firstIndex := index
+	if firstIndex%2 != 0 {
+		firstIndex--
+	}
+	chnk, err := api.chunkSource.GetChunk(firstIndex, 2)
 	if err != nil {
 		return 255, errors.Wrap("could not load digit", err)
 	}
@@ -89,4 +103,8 @@ func (api *API) GetDigit(index int64) (byte, error) {
 
 func (api *API) GetChunk(firstIndex int64, size int) (piio.Chunk, error) {
 	return api.chunkSource.GetChunk(firstIndex, size)
+}
+
+func (api *API) Handler() http.Handler {
+	return api.router
 }
