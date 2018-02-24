@@ -64,14 +64,35 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 			writeJson(w, &ChunkResponse{Error: &errMsg})
 			return
 		}
-		chnk, err := api.GetChunk(index, int(size))
+		getSize := size
+		if getSize%2 != 0 {
+			getSize++
+		}
+		firstIndex := index
+		if firstIndex%2 != 0 {
+			firstIndex--
+			getSize += 2
+		}
+
+		chnk, err := api.GetChunk(firstIndex, int(getSize))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			errMsg := err.Error()
 			writeJson(w, &ChunkResponse{Error: &errMsg})
 			return
 		}
+
 		unChnk := piio.AsUncompressedChunk(chnk)
+
+		if firstIndex != index && len(unChnk.Digits) > 1 {
+			// We requested one too early
+			unChnk.Digits = unChnk.Digits[1:]
+			unChnk.FirstDigitIndex++
+		}
+		if size != getSize && len(unChnk.Digits) > int(size) {
+			unChnk.Digits = unChnk.Digits[:size]
+		}
+
 		digits := make([]int, len(unChnk.Digits))
 		for i, d := range unChnk.Digits {
 			digits[i] = int(d)
