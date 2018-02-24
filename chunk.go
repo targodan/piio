@@ -241,3 +241,12 @@ func (c *UncompressedChunk) Digit(index int64) (byte, error) {
 	}
 	return c.Digits[ind], nil
 }
+
+func AsUncompressedChunk(chnk Chunk) *UncompressedChunk {
+	chnk = Decompress(chnk)
+	c, ok := chnk.(*UncompressedChunk)
+	if !ok {
+		panic("only builtin chunk types are supported")
+	}
+	return c
+}
