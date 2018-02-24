@@ -102,6 +102,20 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 			Digits:     digits,
 		})
 	})
+	router.GET("/v1/settings", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		avail, err := chunkSource.AvailableDigits()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			errMsg := err.Error()
+			writeJson(w, &SettingsResponse{
+				Error: &errMsg,
+			})
+		}
+		writeJson(w, &SettingsResponse{
+			AvailableDigits:  avail,
+			MaximumChunkSize: chunkSource.MaximumChunkSize(),
+		})
+	})
 
 	return api
 }

@@ -21,6 +21,12 @@ const (
 type ChunkSource interface {
 	// GetChunk returns the requested chunk.
 	GetChunk(firstIndex int64, size int) (Chunk, error)
+	// AvailableDigits returns the amount of digits
+	// available.
+	AvailableDigits() (int64, error)
+	// MaximumChunkSize returns the maximum allowed
+	// chunk size.
+	MaximumChunkSize() int
 }
 
 type uncachedChunkSource struct {
@@ -58,4 +64,16 @@ func (cs *uncachedChunkSource) GetChunk(firstIndex int64, size int) (Chunk, erro
 	}
 
 	return nil, errors.New("unknown file format")
+}
+
+func (cs *uncachedChunkSource) AvailableDigits() (int64, error) {
+	fi, err := os.Stat(cs.filename)
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size() * int64(2), nil
+}
+
+func (cs *uncachedChunkSource) MaximumChunkSize() int {
+	return cs.maxSize
 }

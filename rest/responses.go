@@ -11,3 +11,9 @@ type ChunkResponse struct {
 	Digits     []int   `json:"digits"`
 	Error      *string `json:"error"`
 }
+
+type SettingsResponse struct {
+	AvailableDigits  int64   `json:"availableDigits"`
+	MaximumChunkSize int     `json:"maximumChunkSize"`
+	Error            *string `json:"error"`
+}
