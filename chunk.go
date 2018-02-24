@@ -242,6 +242,8 @@ func (c *UncompressedChunk) Digit(index int64) (byte, error) {
 	return c.Digits[ind], nil
 }
 
+// AsUncompressedChunk returns the given Chunk as an
+// UncompressedChunk. Panics if wrong type is given.
 func AsUncompressedChunk(chnk Chunk) *UncompressedChunk {
 	chnk = Decompress(chnk)
 	c, ok := chnk.(*UncompressedChunk)
@@ -249,4 +251,49 @@ func AsUncompressedChunk(chnk Chunk) *UncompressedChunk {
 		panic("only builtin chunk types are supported")
 	}
 	return c
+}
+
+func WriteChunk(chnk Chunk, format FileFormat, w io.Writer) error {
+	if format == FileFormatCompressed {
+		chnk = Compress(chnk)
+		c, ok := chnk.(*CompressedChunk)
+		if !ok {
+			return errors.New("unknown Chunk type")
+		}
+		return writeCompressedChunk(c, w)
+	} else if format == FileFormatText {
+		chnk = Decompress(chnk)
+		c, ok := chnk.(*UncompressedChunk)
+		if !ok {
+			return errors.New("unknown Chunk type")
+		}
+		return writeUncompressedChunkText(c, w)
+	}
+	return errors.New("unknown file format")
+}
+
+func writeCompressedChunk(chnk *CompressedChunk, w io.Writer) error {
+	n, err := w.Write(chnk.data)
+	if err != nil {
+		return err
+	}
+	if n != len(chnk.data) {
+		return errors.New("not all bytes could be written")
+	}
+	return nil
+}
+
+func writeUncompressedChunkText(chnk *UncompressedChunk, w io.Writer) error {
+	data := append([]byte{}, chnk.Digits...)
+	for i := range data {
+		data[i] = data[i] + byte('0')
+	}
+	n, err := w.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return errors.New("not all bytes could be written")
+	}
+	return nil
 }
