@@ -179,10 +179,15 @@ func ReadTextChunk(input io.ReadSeeker, firstIndex int64, size int) (Chunk, erro
 	// Trim in case we requested more than the file can give us.
 	chunk.Digits = chunk.Digits[:size]
 
-	// Convert from character to number
+	digits := make([]byte, 0, len(chunk.Digits))
+	// Convert from character to number and filter
 	for i := range chunk.Digits {
-		chunk.Digits[i] = chunk.Digits[i] - byte('0')
+		if chunk.Digits[i] < '0' || '9' < chunk.Digits[i] {
+			continue
+		}
+		digits = append(digits, chunk.Digits[i]-byte('0'))
 	}
+	chunk.Digits = digits
 
 	return chunk, nil
 }
