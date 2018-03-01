@@ -11,6 +11,8 @@ import (
 	errors "github.com/targodan/go-errors"
 )
 
+const BaseURI = "/api/"
+
 type API struct {
 	router      *httprouter.Router
 	chunkSource piio.ChunkSource
@@ -28,7 +30,7 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 		chunkSource: chunkSource,
 	}
 
-	router.GET("/v1/digit/:index", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	router.GET(BaseURI+"v1/digit/:index", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		index, err := strconv.ParseInt(p.ByName("index"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -49,7 +51,7 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 		})
 	})
 
-	router.GET("/v1/chunk/:startIndex/:size", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	router.GET(BaseURI+"v1/chunk/:startIndex/:size", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		index, err := strconv.ParseInt(p.ByName("startIndex"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -102,7 +104,7 @@ func NewAPI(chunkSource piio.ChunkSource) *API {
 			Digits:     digits,
 		})
 	})
-	router.GET("/v1/settings", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	router.GET(BaseURI+"v1/settings", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		avail, err := chunkSource.AvailableDigits()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
