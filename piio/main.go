@@ -28,6 +28,13 @@ func main() {
 	app.Name = "piio"
 	app.Usage = "supply digits of Pi via a RESTful API"
 
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "pi,p",
+			Usage: "The file of pi.",
+			Value: "pi.bin",
+		},
+	}
 	app.Commands = []cli.Command{
 		{
 			Name:   "compress",
@@ -35,14 +42,14 @@ func main() {
 			Action: compressAction,
 		},
 		{
+			Name:   "search",
+			Usage:  "searches for a string of digits in pi",
+			Action: searchAction,
+		},
+		{
 			Name:  "serve",
 			Usage: "listen and serve",
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "pi,p",
-					Usage: "The file of pi.",
-					Value: "pi.bin",
-				},
 				cli.StringFlag{
 					Name:  "addr,a",
 					Usage: "The address and port to listen on.",
@@ -62,6 +69,25 @@ func main() {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+}
+
+func searchAction(c *cli.Context) error {
+	if len(c.Args()) != 1 {
+		return cli.NewExitError("expected exactly one argument. Usage: piio search <searchString>", 1)
+	}
+	searchString := c.Args().Get(0)
+	pifile := c.GlobalString("pi")
+
+	index, err := piio.Search(pifile, searchString)
+	if err != nil {
+		return cli.NewExitError(err, 2)
+	}
+	if index != -1 {
+		fmt.Printf("Found \"%s\" at position %d.\n", searchString, index)
+	} else {
+		fmt.Printf("Could not find \"%s\".\n", searchString)
+	}
+	return nil
 }
 
 func compressAction(c *cli.Context) error {
@@ -116,7 +142,7 @@ func compressAction(c *cli.Context) error {
 }
 
 func serveAction(c *cli.Context) error {
-	chunkSource := piio.NewUncachedChunkSource(c.String("pi"), piio.FileFormatCompressed, c.Int("max-chunk-size"))
+	chunkSource := piio.NewUncachedChunkSource(c.GlobalString("pi"), piio.FileFormatCompressed, c.Int("max-chunk-size"))
 	api := rest.NewAPI(chunkSource)
 
 	server := &http.Server{

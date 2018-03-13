@@ -55,8 +55,17 @@ func ReadCompressedChunk(input io.ReadSeeker, firstIndex int64, size int) (Chunk
 		return nil, err
 	}
 
+	c, err := ReadNextCompressedChunk(input, size)
+	chunk, _ := c.(*CompressedChunk)
+	chunk.firstIndex = firstIndex
+
+	return chunk, nil
+}
+
+func ReadNextCompressedChunk(input io.Reader, size int) (Chunk, error) {
+	var err error
 	chunk := &CompressedChunk{
-		firstIndex: firstIndex,
+		firstIndex: -1,
 		data:       make([]byte, size/2),
 	}
 
@@ -68,7 +77,7 @@ func ReadCompressedChunk(input io.ReadSeeker, firstIndex int64, size int) (Chunk
 	// Trim in case we requested more than the file can give us.
 	chunk.data = chunk.data[:size]
 
-	return chunk, nil
+	return chunk, err
 }
 
 // Compress compresses an uncompressed chunk.
