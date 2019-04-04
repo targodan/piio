@@ -1,0 +1,6 @@
+github.com/julienschmidt/httprouter v1.2.0 h1:TDTW5Yz1mjftljbcKqRcrYhd4XeOoI98t+9HbQbYf7g=
+github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
+github.com/targodan/go-errors v0.0.0-20180112090806-8f9e51621795 h1:I6FXPZxj5s/T1F4ZE5C+RRg1AKlT8vIttQWAonmmNxQ=
+github.com/targodan/go-errors v0.0.0-20180112090806-8f9e51621795/go.mod h1:N4tJsuzOfAy8FTlUREaOIeswddQyfJrII5APRr/RHrQ=
+gopkg.in/urfave/cli.v1 v1.20.0 h1:NdAVW6RYxDif9DhDHaAortIu956m2c0v+09AZBPTbE0=
+gopkg.in/urfave/cli.v1 v1.20.0/go.mod h1:vuBzUtMdQeixQj8LVd+/98pzhxNGQoyuPBlsXHOQNO0=
